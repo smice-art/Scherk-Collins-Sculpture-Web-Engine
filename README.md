@@ -22,8 +22,10 @@ Just click the "Screenshot or download the *.html file from this repository.
 ## Views
 | Image | Previews | 
 | :--- | :--- |
-| <img src="images/1.jpg" width="250"> | Gemini Smooth 1 |
-| <img src="images/2.jpg" width="250"> | Gemini Smooth 2 |
+| <img src="images/1.jpg" width="250"> | Image 1 |
+| <img src="images/2.jpg" width="250"> | Image 2 |
+| <img src="images/3.jpg" width="250"> | Image 3 |
+| <img src="images/4.jpg" width="250"> | Image 4 |
 
 ## Release Notes
 
