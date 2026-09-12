@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMICE.ART - Scherk-Collins Sculpture Engine</title>
+    <style>
+        :root {
+            --glass-bg: rgba(15, 23, 42, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-glow: rgba(255, 213, 43, 0.25);
+            --accent: #ffd52b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0b0c10;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Glassmorphic UI Panel */
+        #glass-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 340px;
+            max-height: calc(100vh - 40px);
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title span {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .panel-body {
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .panel-body::-webkit-scrollbar {
+            width: 4px;
+        }
+        .panel-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        /* Collapsible Sections */
+        details {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-color 0.2s ease;
+        }
+
+        details[open] {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        summary {
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-muted);
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        summary:hover {
+            color: var(--text-main);
+        }
+
+        summary::after {
+            content: '+';
+            font-weight: 400;
+            font-size: 14px;
+        }
+
+        details[open] summary::after {
+            content: '−';
+        }
+
+        .control-group {
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .control-val {
+            color: var(--accent);
+            font-family: monospace;
+        }
+
+        /* Custom Inputs */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.15);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--accent);
+            transition: transform 0.1s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 100%;
+            height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+
+        select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-main);
+            padding: 6px 10px;
+            border-radius: 8px;
+            outline: none;
+            font-size: 12px;
+        }
+
+        /* Glass Buttons */
+        .glass-btn {
+            background: rgba(255, 213, 43, 0.12);
+            border: 1px solid rgba(255, 213, 43, 0.3);
+            color: var(--accent);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            text-align: center;
+        }
+
+        .glass-btn:hover {
+            background: rgba(255, 213, 43, 0.25);
+            box-shadow: 0 0 12px var(--glass-glow);
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <!-- Glassmorphic Overlay Panel -->
+    <div id="glass-panel">
+        <div class="panel-header">
+            <div class="panel-title"><span></span> Scherk-Collins Engine</div>
+        </div>
+        <div class="panel-body">
+            
+            <!-- Structure -->
+            <details open>
+                <summary>Topology & Geometry</summary>
+                <div class="control-group">
+                    <div class="control-row">
+                        <div class="control-label">Branches <span class="control-val" id="val-branches">3</span></div>
+                        <input type="range" id="param-branches" min="1" max="10" step="1" value="3">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Storeys <span class="control-val" id="val-storeys">4</span></div>
+                        <input type="range" id="param-storeys" min="1" max="16" step="1" value="4">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Storey Height <span class="control-val" id="val-height">1.50</span></div>
+                        <input type="range" id="param-height" min="0.1" max="5.0" step="0.05" value="1.5">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Flange Width <span class="control-val" id="val-flange">1.20</span></div>
+                        <input type="range" id="param-flange" min="0.7" max="4.0" step="0.05" value="1.2">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Thickness <span class="control-val" id="val-thickness">0.08</span></div>
+                        <input type="range" id="param-thickness" min="0.00" max="0.4" step="0.01" value="0.08">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Detail Resolution <span class="control-val" id="val-detail">8</span></div>
+                        <!-- Increased max resolution to 64 -->
+                        <input type="range" id="param-detail" min="1" max="64" step="1" value="8">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Auto Smooth Angle <span class="control-val" id="val-creaseAngle">35°</span></div>
+                        <!-- Blender-style Auto Smooth crease angle threshold -->
+                        <input type="range" id="param-creaseAngle" min="0" max="180" step="1" value="35">
+                    </div>
+                </div>
+            </details>
+
+            <!-- Ring Bend -->
+            <details>
+                <summary>Twist & Toroidal Bend</summary>
+                <div class="control-group">
+                    <div class="control-row">
+                        <div class="control-label">Warp Angle <span class="control-val" id="val-warp">360°</span></div>
+                        <input type="range" id="param-warp" min="0" max="1080" step="5" value="360">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Twist Angle <span class="control-val" id="val-twist">180°</span></div>
+                        <input type="range" id="param-twist" min="-900" max="1080" step="5" value="180">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Azimuth Offset <span class="control-val" id="val-azimuth">0°</span></div>
+                        <input type="range" id="param-azimuth" min="-360" max="360" step="5" value="0">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Phase Shift <span class="control-val" id="val-phase">0.00</span></div>
+                        <input type="range" id="param-phase" min="-0.5" max="1.5" step="0.02" value="0">
+                    </div>
+                    <button class="glass-btn" id="btn-snap">Snap to Closing Twist</button>
+                </div>
+            </details>
+
+            <!-- Material & Presets -->
+            <details open>
+                <summary>Material Presets & Surface</summary>
+                <div class="control-group">
+                    <div class="control-row">
+                        <div class="control-label">Style Presets</div>
+                        <select id="select-preset">
+                            <option value="Scherk Gold" selected>Scherk Gold (#ffd52b)</option>
+                            <option value="Frosted Glass">Frosted Crystal</option>
+                            <option value="Polished Chrome">Polished Chrome</option>
+                            <option value="Obsidian Matte">Obsidian Matte</option>
+                            <option value="Emerald Gem">Emerald Gem</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Base Color</div>
+                        <input type="color" id="param-matColor" value="#ffd52b">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Metalness <span class="control-val" id="val-metalness">0.40</span></div>
+                        <input type="range" id="param-metalness" min="0" max="1" step="0.01" value="0.4">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Roughness <span class="control-val" id="val-roughness">0.25</span></div>
+                        <input type="range" id="param-roughness" min="0" max="1" step="0.01" value="0.25">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Transmission (Glass) <span class="control-val" id="val-transmission">0.00</span></div>
+                        <input type="range" id="param-transmission" min="0" max="1" step="0.01" value="0">
+                    </div>
+                </div>
+            </details>
+
+            <!-- Environment -->
+            <details>
+                <summary>Lighting & Background</summary>
+                <div class="control-group">
+                    <div class="control-row">
+                        <div class="control-label">Background Color</div>
+                        <input type="color" id="param-bgColor" value="#0b0c10">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Key Light Color</div>
+                        <input type="color" id="param-keyColor" value="#ffeedd">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Key Intensity <span class="control-val" id="val-keyPower">1.2</span></div>
+                        <input type="range" id="param-keyPower" min="0" max="3" step="0.1" value="1.2">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Fill Light Color</div>
+                        <input type="color" id="param-fillColor" value="#77ccff">
+                    </div>
+                    <div class="control-row">
+                        <div class="control-label">Fill Intensity <span class="control-val" id="val-fillPower">0.8</span></div>
+                        <input type="range" id="param-fillPower" min="0" max="3" step="0.1" value="0.8">
+                    </div>
+                </div>
+            </details>
+
+            <!-- Exporters -->
+            <details open>
+                <summary>Export 3D Model</summary>
+                <div class="control-group">
+                    <div class="btn-grid">
+                        <button class="glass-btn" id="btn-export-obj">Export .OBJ</button>
+                        <button class="glass-btn" id="btn-export-stl">Export .STL</button>
+                    </div>
+                </div>
+            </details>
+
+        </div>
+    </div>
+
+    <!-- Script Engine -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+        import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
+        import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+
+        // ==========================================
+        // 1. SCENE SETUP
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b0c10);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(4, 3, 5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.15;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        keyLight.position.set(5, 6, 5);
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0x77ccff, 0.8);
+        fillLight.position.set(-5, -3, -5);
+        scene.add(fillLight);
+
+        // Default Object Material (HEX #ffd52b)
+        const material = new THREE.MeshPhysicalMaterial({
+            color: 0xffd52b,
+            metalness: 0.4,
+            roughness: 0.25,
+            transmission: 0.0,
+            ior: 1.5,
+            thickness: 0.5,
+            transparent: true,
+            opacity: 1.0,
+            side: THREE.DoubleSide
+        });
+
+        const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+        scene.add(mesh);
+
+        // ==========================================
+        // 2. SCHERK-COLLINS TOPOLOGY GENERATOR
+        // ==========================================
+        const XY_SCALE = 1.5 / Math.PI;
+
+        const params = {
+            branches: 3,
+            storeys: 4,
+            height: 1.5,
+            flange: 1.2,
+            thickness: 0.08,
+            twist: 180,
+            azimuth: 0,
+            warp: 360,
+            phase: 0.0,
+            detail: 8,
+            creaseAngle: 35
+        };
+
+        function generateScherkCollins(p) {
+            const b = Math.floor(p.branches);
+            const S = Math.floor(p.storeys);
+            const W = p.flange + 0.1;
+            const d = Math.max(1, Math.floor(p.detail));
+            const R = 4 * d;
+            const m = 4 * d + 1;
+            
+            const H_ex = S * Math.PI;
+            const H_out = S * p.height;
+            const t_out = p.thickness * XY_SCALE;
+            
+            const warp_on = p.warp > 1e-6;
+            const az = p.azimuth * (Math.PI / 180) - (Math.PI / 4);
+            const tw = p.twist * (Math.PI / 180);
+            const wr = warp_on ? (p.warp * (Math.PI / 180)) : 0.0;
+            const R_ring = warp_on ? (H_out / wr) : 0.0;
+            
+            const sinhW = Math.sinh(W);
+            const c_open = sinhW * sinhW;
+            const z_base = p.phase * Math.PI;
+
+            function xform(xt, yt, z_ex) {
+                const xs = xt * XY_SCALE;
+                const ys = yt * XY_SCALE;
+                const zn = (z_ex - z_base) / H_ex;
+                const a = az + tw * zn;
+                
+                const ca = Math.cos(a);
+                const sa = Math.sin(a);
+                const x1 = xs * ca - ys * sa;
+                const y1 = xs * sa + ys * ca;
+                
+                if (warp_on) {
+                    const th = wr * (zn - 0.5);
+                    const rad = R_ring + x1;
+                    return new THREE.Vector3(rad * Math.cos(th), y1, rad * Math.sin(th));
+                } else {
+                    return new THREE.Vector3(x1, y1, (zn - 0.5) * H_out);
+                }
+            }
+
+            const sig = [];
+            for (let k = 0; k < m; k++) {
+                sig.push(-Math.cos(Math.PI * k / (m - 1)));
+            }
+
+            const t_lo = p.phase;
+            const t_hi = S + p.phase;
+            const bounds = [t_lo];
+            for (let k = 1; k <= S; k++) {
+                if (k > t_lo + 1e-9 && k < t_hi - 1e-9) bounds.push(k);
+            }
+            bounds.push(t_hi);
+
+            const cells = [];
+            for (let i = 0; i < bounds.length - 1; i++) {
+                cells.push({ a: bounds[i], b: bounds[i + 1], s_rot: Math.floor(bounds[i] + 1e-9) });
+            }
+
+            const patches = [];
+
+            for (let cidx = 0; cidx < cells.length; cidx++) {
+                const cell = cells[cidx];
+                for (let j = 0; j < b; j++) {
+                    const A = (2 * j + cell.s_rot) % (2 * b);
+                    const base_ang = A * Math.PI / b;
+                    const wedge = Math.PI / b;
+                    
+                    const rows = [];
+                    for (let i = 0; i <= R; i++) {
+                        const t = cell.a + (cell.b - cell.a) * (0.5 - 0.5 * Math.cos(Math.PI * i / R));
+                        const z_ex = t * Math.PI;
+                        const frac = t - cell.s_rot;
+                        const c = Math.sin(Math.PI * frac);
+                        
+                        if (b === 1 || Math.abs(frac - Math.round(frac)) < 1e-9) {
+                            const row = [];
+                            for (let k = 0; k < m; k++) {
+                                const sg = sig[k];
+                                let ang = base_ang, rad = 0;
+                                if (sg > 1e-12) { ang = base_ang; rad = W * sg; }
+                                else if (sg < -1e-12) { ang = base_ang + wedge; rad = -W * sg; }
+                                row.push(xform(rad * Math.cos(ang), rad * Math.sin(ang), z_ex));
+                            }
+                            rows.push(row);
+                            continue;
+                        }
+                        
+                        if (c > c_open) {
+                            rows.push(null);
+                            continue;
+                        }
+                        
+                        const sc = Math.sqrt(c);
+                        const L = Math.log(sinhW / sc);
+                        const row = [];
+                        for (let k = 0; k < m; k++) {
+                            const e = Math.exp(sig[k] * L);
+                            const x = Math.asinh(sc * e);
+                            const y = Math.asinh(sc / Math.max(e, 1e-12));
+                            const f = Math.atan2(y, x) / (Math.PI / 2);
+                            const ang = base_ang + f * wedge;
+                            const rad = Math.hypot(x, y);
+                            row.push(xform(rad * Math.cos(ang), rad * Math.sin(ang), z_ex));
+                        }
+                        rows.push(row);
+                    }
+                    patches.push(rows);
+                }
+            }
+
+            const vertices = [];
+            const indices = [];
+            let vOffset = 0;
+
+            patches.forEach(rows => {
+                const normals = [];
+                for (let i = 0; i <= R; i++) {
+                    const row_n = [];
+                    if (!rows[i]) {
+                        normals.push(null);
+                        continue;
+                    }
+                    const im = (i > 0 && rows[i - 1]) ? i - 1 : i;
+                    const ip = (i < R && rows[i + 1]) ? i + 1 : i;
+                    
+                    for (let k = 0; k < m; k++) {
+                        const km = Math.max(0, k - 1);
+                        const kp = Math.min(m - 1, k + 1);
+                        const du = new THREE.Vector3().subVectors(rows[i][kp], rows[i][km]);
+                        const dv = (ip !== im) ? new THREE.Vector3().subVectors(rows[ip][k], rows[im][k]) : new THREE.Vector3();
+                        const n = new THREE.Vector3().crossVectors(du, dv).normalize();
+                        if (n.lengthSq() < 1e-6) n.set(0,1,0);
+                        row_n.push(n);
+                    }
+                    normals.push(row_n);
+                }
+
+                const vidMap = new Map();
+                const thick2 = t_out / 2.0;
+
+                for (let i = 0; i <= R; i++) {
+                    if (!rows[i]) continue;
+                    vidMap.set(i, { top: [], bot: [] });
+                    for (let k = 0; k < m; k++) {
+                        const pt = rows[i][k];
+                        const n = normals[i][k];
+                        const offset = n.clone().multiplyScalar(thick2);
+                        
+                        const pTop = pt.clone().add(offset);
+                        const pBot = pt.clone().sub(offset);
+
+                        vertices.push(pTop.x, pTop.y, pTop.z);
+                        vidMap.get(i).top.push(vOffset++);
+                        
+                        vertices.push(pBot.x, pBot.y, pBot.z);
+                        vidMap.get(i).bot.push(vOffset++);
+                    }
+                }
+
+                for (let i = 0; i < R; i++) {
+                    if (!vidMap.has(i) || !vidMap.has(i+1)) continue;
+                    const r0 = vidMap.get(i);
+                    const r1 = vidMap.get(i+1);
+                    
+                    for (let k = 0; k < m - 1; k++) {
+                        indices.push(r0.top[k], r0.top[k+1], r1.top[k+1]);
+                        indices.push(r0.top[k], r1.top[k+1], r1.top[k]);
+                        indices.push(r0.bot[k], r1.bot[k+1], r0.bot[k+1]);
+                        indices.push(r0.bot[k], r1.bot[k], r1.bot[k+1]);
+                    }
+                }
+
+                for (let i = 0; i <= R; i++) {
+                    if (!vidMap.has(i)) continue;
+                    const row = vidMap.get(i);
+                    if (vidMap.has(i+1)) {
+                        const next = vidMap.get(i+1);
+                        indices.push(row.top[0], next.bot[0], row.bot[0]);
+                        indices.push(row.top[0], next.top[0], next.bot[0]);
+                        const e = m - 1;
+                        indices.push(row.top[e], row.bot[e], next.bot[e]);
+                        indices.push(row.top[e], next.bot[e], next.top[e]);
+                    }
+                    const prevGap = (i > 0 && !vidMap.has(i-1));
+                    const nextGap = (i < R && !vidMap.has(i+1));
+                    const isTopCap = (i === 0);
+                    const isBotCap = (i === R);
+                    
+                    if (prevGap || isTopCap) {
+                        for(let k=0; k < m-1; k++) {
+                            indices.push(row.top[k], row.bot[k+1], row.top[k+1]);
+                            indices.push(row.top[k], row.bot[k], row.bot[k+1]);
+                        }
+                    }
+                    if (nextGap || isBotCap) {
+                        for(let k=0; k < m-1; k++) {
+                            indices.push(row.top[k], row.top[k+1], row.bot[k+1]);
+                            indices.push(row.top[k], row.bot[k+1], row.bot[k]);
+                        }
+                    }
+                }
+            });
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geo.setIndex(indices);
+
+            // 1. Weld coincident spatial vertices first
+            const cleanGeo = BufferGeometryUtils.mergeVertices(geo, 1e-3);
+            
+            // 2. Apply Blender-style "Auto Smooth" (Creased Normals based on threshold angle)
+            const creaseRad = THREE.MathUtils.degToRad(p.creaseAngle);
+            const creasedGeo = BufferGeometryUtils.toCreasedNormals(cleanGeo, creaseRad);
+
+            return creasedGeo;
+        }
+
+        function updateGeometry() {
+            const newGeo = generateScherkCollins(params);
+            newGeo.computeBoundingBox();
+            const box = newGeo.boundingBox;
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            newGeo.translate(-center.x, -center.y, -center.z);
+            
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            if (maxDim > 0) newGeo.scale(3/maxDim, 3/maxDim, 3/maxDim);
+
+            mesh.geometry.dispose();
+            mesh.geometry = newGeo;
+        }
+
+        // ==========================================
+        // 3. UI BINDINGS & PRESETS
+        // ==========================================
+        const presets = {
+            'Scherk Gold': { color: '#ffd52b', metalness: 0.40, roughness: 0.25, transmission: 0.00 },
+            'Frosted Glass': { color: '#38bdf8', metalness: 0.10, roughness: 0.20, transmission: 0.65 },
+            'Polished Chrome': { color: '#ffffff', metalness: 0.95, roughness: 0.08, transmission: 0.00 },
+            'Obsidian Matte': { color: '#1e293b', metalness: 0.80, roughness: 0.85, transmission: 0.00 },
+            'Emerald Gem': { color: '#10b981', metalness: 0.05, roughness: 0.10, transmission: 0.85 }
+        };
+
+        function bindRange(id, targetObj, key, valId, suffix = '', onChangeFn = null) {
+            const input = document.getElementById(id);
+            const display = document.getElementById(valId);
+            input.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                targetObj[key] = val;
+                if (display) display.innerText = typeof val === 'number' && !Number.isInteger(val) ? val.toFixed(2) + suffix : val + suffix;
+                if (onChangeFn) onChangeFn();
+            });
+        }
+
+        bindRange('param-branches', params, 'branches', 'val-branches', '', updateGeometry);
+        bindRange('param-storeys', params, 'storeys', 'val-storeys', '', updateGeometry);
+        bindRange('param-height', params, 'height', 'val-height', '', updateGeometry);
+        bindRange('param-flange', params, 'flange', 'val-flange', '', updateGeometry);
+        bindRange('param-thickness', params, 'thickness', 'val-thickness', '', updateGeometry);
+        bindRange('param-detail', params, 'detail', 'val-detail', '', updateGeometry);
+        bindRange('param-creaseAngle', params, 'creaseAngle', 'val-creaseAngle', '°', updateGeometry);
+        bindRange('param-warp', params, 'warp', 'val-warp', '°', updateGeometry);
+        bindRange('param-twist', params, 'twist', 'val-twist', '°', updateGeometry);
+        bindRange('param-azimuth', params, 'azimuth', 'val-azimuth', '°', updateGeometry);
+        bindRange('param-phase', params, 'phase', 'val-phase', '', updateGeometry);
+
+        // Material Control Bindings
+        bindRange('param-metalness', material, 'metalness', 'val-metalness');
+        bindRange('param-roughness', material, 'roughness', 'val-roughness');
+        bindRange('param-transmission', material, 'transmission', 'val-transmission');
+
+        document.getElementById('param-matColor').addEventListener('input', (e) => {
+            material.color.set(e.target.value);
+        });
+
+        // Environment Control Bindings
+        document.getElementById('param-bgColor').addEventListener('input', (e) => scene.background.set(e.target.value));
+        document.getElementById('param-keyColor').addEventListener('input', (e) => keyLight.color.set(e.target.value));
+        document.getElementById('param-fillColor').addEventListener('input', (e) => fillLight.color.set(e.target.value));
+        bindRange('param-keyPower', keyLight, 'intensity', 'val-keyPower');
+        bindRange('param-fillPower', fillLight, 'intensity', 'val-fillPower');
+
+        // Preset Selector
+        document.getElementById('select-preset').addEventListener('change', (e) => {
+            const p = presets[e.target.value];
+            if (!p) return;
+            material.color.set(p.color);
+            material.metalness = p.metalness;
+            material.roughness = p.roughness;
+            material.transmission = p.transmission;
+
+            document.getElementById('param-matColor').value = p.color;
+            document.getElementById('param-metalness').value = p.metalness;
+            document.getElementById('val-metalness').innerText = p.metalness.toFixed(2);
+            document.getElementById('param-roughness').value = p.roughness;
+            document.getElementById('val-roughness').innerText = p.roughness.toFixed(2);
+            document.getElementById('param-transmission').value = p.transmission;
+            document.getElementById('val-transmission').innerText = p.transmission.toFixed(2);
+        });
+
+        // Snap Twist Action
+        document.getElementById('btn-snap').addEventListener('click', () => {
+            const b = Math.max(1, Math.floor(params.branches));
+            const unit = 360.0 / b;
+            const targetMod = ((-params.storeys * 180.0 / b) % unit + unit) % unit;
+            const k = Math.round((params.twist - targetMod) / unit);
+            params.twist = targetMod + k * unit;
+            
+            document.getElementById('param-twist').value = params.twist;
+            document.getElementById('val-twist').innerText = params.twist + '°';
+            updateGeometry();
+        });
+
+        // File Exporters
+        function downloadFile(blob, filename) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        document.getElementById('btn-export-obj').addEventListener('click', () => {
+            const exporter = new OBJExporter();
+            const result = exporter.parse(mesh);
+            downloadFile(new Blob([result], { type: 'text/plain' }), `Scherk_Collins_${params.branches}b_${params.storeys}s.obj`);
+        });
+
+        document.getElementById('btn-export-stl').addEventListener('click', () => {
+            const exporter = new STLExporter();
+            const result = exporter.parse(mesh, { binary: true });
+            downloadFile(new Blob([result], { type: 'application/octet-stream' }), `Scherk_Collins_${params.branches}b_${params.storeys}s.stl`);
+        });
+
+        // ==========================================
+        // 4. INITIALIZATION & RENDER LOOP
+        // ==========================================
+        updateGeometry();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
