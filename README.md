@@ -29,5 +29,8 @@ Just click the "Screenshot or download the *.html file from this repository.
 
 ## Release Notes
 
+### My thanks go:
+to Brent Collins (from Berkely) for the impetus and to Heinrich Ferdinand Scherk (1798–1885) developer of the Scherk Formula & Surface.
+
 ### v1.0.0 (September 12, 2026)
 - **Publishing**: First public upload of Web Engine.
