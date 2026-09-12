@@ -14,7 +14,7 @@ Here is the result so far, one thing I did not get solved is the tiny gap betwee
 * You can export objects in stl or obj
 
 ## Screen Shot & LIVE Version (click to visit and ignore, if asked for redirection)
-[![watch](images/screen.jpg)](https://smice-art.github.io/Scherck-Collin-Web_Engine/)
+[![watch](images/screen.jpg)](https://smice-art.github.io/Scherk-Collins-Sculpture-Web-Engine/)
 
 ## Run
 Just click the "Screenshot or download the *.html file from this repository.
